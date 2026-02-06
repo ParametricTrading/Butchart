@@ -1,4 +1,15 @@
 (() => {
+  
+  console.log({
+  dbFileInput,
+  newDbButton,
+  exportButton,
+  recipeForm,
+  ingredientForm,
+  linkIngredientForm,
+  linkSubrecipeForm
+});
+
   /* =======================
      DOM references
      ======================= */
