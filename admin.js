@@ -1,4 +1,3 @@
-console.count("admin.js executed");
 (() => {
 
 
@@ -53,7 +52,7 @@ console.count("admin.js executed");
   console.log({
   dbFileInput,
   newDbButton,
-  exportButton,
+  Button,
   recipeForm,
   ingredientForm,
   linkIngredientForm,
@@ -72,7 +71,7 @@ console.count("admin.js executed");
 
   const openDatabase = (buffer) => {
     db = new sqlite3.oo1.DB(new Uint8Array(buffer));
-    exportButton.disabled = false;
+    Button.disabled = false;
   };
 
   const createEmptyDatabase = () => {
@@ -103,25 +102,40 @@ console.count("admin.js executed");
       );
     `);
 
-    exportButton.disabled = false;
+    Button.disabled = false;
   };
 
-  const exportDatabase = () => {
-    ensureDatabaseReady();
+const exportDatabase = () => {
+  ensureDatabaseReady();
 
-    const bytes = db.export();
-    const blob = new Blob([bytes], { type: 'application/x-sqlite3' });
-    const url = URL.createObjectURL(blob);
+  const capi = sqlite3.capi;
+  const dbPtr = db.pointer;
 
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'recipes.db';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+  const serialized = capi.sqlite3_serialize(
+    dbPtr,
+    'main',
+    0,   // allocate
+    0    // size out
+  );
 
-    URL.revokeObjectURL(url);
-  };
+  if (!serialized) {
+    throw new Error('Failed to serialize database.');
+  }
+
+  const bytes = new Uint8Array(serialized);
+  const blob = new Blob([bytes], { type: 'application/x-sqlite3' });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'recipes.db';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  URL.revokeObjectURL(url);
+};
+
 
   /* =======================
      Query helpers
