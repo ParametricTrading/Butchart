@@ -63,7 +63,7 @@
 
   const openDatabase = (buffer) => {
     db = new sqlite3.oo1.DB(new Uint8Array(buffer));
-    newDbButton.disabled = false;
+    exportButton.disabled = false;
   };
 
   const createEmptyDatabase = () => {
@@ -94,7 +94,7 @@
       );
     `);
 
-    newDbButton.disabled = false;
+    exportButton.disabled = false;
   };
 
 const exportDatabase = () => {
