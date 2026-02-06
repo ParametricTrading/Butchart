@@ -1,4 +1,4 @@
-console.log("ADMIN.JS VERSION", "binding");
+console.log("ADMIN.JS VERSION", "binding2");
 (() => {
 
 
@@ -231,8 +231,11 @@ const exportDatabase = () => {
     const name = recipeNameInput.value.trim();
     if (!name) return;
 
-  sql: 'INSERT INTO recipes (name) VALUES (?);',
-  bind: [name]
+  db.exec({
+    sql: 'INSERT INTO recipes (name) VALUES (?);',
+    bind: [name]
+  });
+
     recipeNameInput.value = '';
     refreshLists();
     setStatus(`Added recipe “${name}”.`, 'success');
@@ -245,8 +248,11 @@ const exportDatabase = () => {
     const name = ingredientNameInput.value.trim();
     if (!name) return;
 
-    sql: 'INSERT INTO recipes (name) VALUES (?);',
+  db.exec({
+    sql: 'INSERT INTO ingredients (name) VALUES (?);',
     bind: [name]
+  });
+
     ingredientNameInput.value = '';
     refreshLists();
     setStatus(`Added ingredient “${name}”.`, 'success');
@@ -262,12 +268,13 @@ const exportDatabase = () => {
 
     db.exec({
     sql: `
-    INSERT OR IGNORE INTO recipe_ingredients
-    (recipe_id, ingredient_id)
-    VALUES (?, ?);
+      INSERT OR IGNORE INTO recipe_ingredients
+      (recipe_id, ingredient_id)
+      VALUES (?, ?);
     `,
-  bind: [recipeId, ingredientId]
-});
+    bind: [recipeId, ingredientId]
+    });
+
 
 
     refreshLists();
