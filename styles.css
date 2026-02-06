@@ -1,0 +1,147 @@
+:root {
+  color-scheme: light;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.5;
+  background: #f4f4f4;
+  color: #1f1f1f;
+}
+
+body {
+  margin: 0;
+}
+
+header,
+footer {
+  background: #ffffff;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+footer {
+  border-top: 1px solid #e0e0e0;
+  border-bottom: none;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #4a4a4a;
+}
+
+main {
+  padding: 1.5rem 2rem 2.5rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.subtitle {
+  color: #4a4a4a;
+  margin-top: 0.25rem;
+}
+
+.panel {
+  background: #ffffff;
+  padding: 1.25rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.row.wrap {
+  flex-wrap: wrap;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+input,
+select,
+button {
+  font: inherit;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #cfcfcf;
+}
+
+button {
+  background: #0d6efd;
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+}
+
+button:disabled {
+  background: #a0a0a0;
+  cursor: not-allowed;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.list button {
+  width: 100%;
+  text-align: left;
+  background: #f0f6ff;
+  color: #1f1f1f;
+  border: 1px solid #c9dcff;
+}
+
+.details h3 {
+  margin-top: 0;
+}
+
+.muted {
+  color: #6b6b6b;
+}
+
+.status {
+  margin-top: 0.75rem;
+  font-weight: 600;
+}
+
+.status[data-tone="success"] {
+  color: #1b7f3c;
+}
+
+.status[data-tone="warning"] {
+  color: #a16700;
+}
+
+.status[data-tone="error"] {
+  color: #b42318;
+}
+
+.file {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+@media (max-width: 600px) {
+  header,
+  footer,
+  main {
+    padding: 1rem;
+  }
+
+  .row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
