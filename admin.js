@@ -231,7 +231,8 @@ const exportDatabase = () => {
     const name = recipeNameInput.value.trim();
     if (!name) return;
 
-    db.exec('INSERT INTO recipes (name) VALUES (?);', [name]);
+  sql: 'INSERT INTO recipes (name) VALUES (?);',
+  bind: [name]
     recipeNameInput.value = '';
     refreshLists();
     setStatus(`Added recipe “${name}”.`, 'success');
@@ -244,7 +245,8 @@ const exportDatabase = () => {
     const name = ingredientNameInput.value.trim();
     if (!name) return;
 
-    db.exec('INSERT INTO ingredients (name) VALUES (?);', [name]);
+    sql: 'INSERT INTO recipes (name) VALUES (?);',
+    bind: [name]
     ingredientNameInput.value = '';
     refreshLists();
     setStatus(`Added ingredient “${name}”.`, 'success');
@@ -258,10 +260,15 @@ const exportDatabase = () => {
     const ingredientId = linkIngredientSelect.value;
     if (!recipeId || !ingredientId) return;
 
-    db.exec(
-      'INSERT OR IGNORE INTO recipe_ingredients (recipe_id, ingredient_id) VALUES (?, ?);',
-      [recipeId, ingredientId]
-    );
+    db.exec({
+    sql: `
+    INSERT OR IGNORE INTO recipe_ingredients
+    (recipe_id, ingredient_id)
+    VALUES (?, ?);
+    `,
+  bind: [recipeId, ingredientId]
+});
+
 
     refreshLists();
     setStatus('Linked ingredient to recipe.', 'success');
@@ -280,10 +287,14 @@ const exportDatabase = () => {
       return;
     }
 
-    db.exec(
-      'INSERT OR IGNORE INTO recipe_components (parent_recipe_id, child_recipe_id) VALUES (?, ?);',
-      [parentId, childId]
-    );
+    db.exec({
+    sql: `
+    INSERT OR IGNORE INTO recipe_components
+    (parent_recipe_id, child_recipe_id)
+    VALUES (?, ?);
+    `,
+    bind: [parentId, childId]
+    });
 
     refreshLists();
     setStatus('Linked sub-recipe.', 'success');
