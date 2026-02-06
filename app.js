@@ -1,3 +1,6 @@
+import sqlite3InitModule from "./sqlite3.js";
+
+
 (() => {
   const statusEl = document.getElementById('status');
   const searchInput = document.getElementById('ingredient-search');
@@ -58,24 +61,15 @@
   };
 
   const initSqlite = async () => {
-    if (!window.sqlite3InitModule) {
-      throw new Error('sqlite3InitModule is not available. Add sqlite3.js and sqlite3.wasm.');
-    }
-    sqlite3 = await window.sqlite3InitModule({
-      print: console.log,
-      printErr: console.error,
-    });
+  sqlite3 = await sqlite3InitModule();
   };
 
-  const openDatabase = (buffer) => {
-    const bytes = new Uint8Array(buffer);
-    db = new sqlite3.oo1.DB();
-    if (typeof db.deserialize === 'function') {
-      db.deserialize(bytes);
-    } else {
-      throw new Error('SQLite WASM does not support deserialize().');
-    }
-  };
+
+const openDatabase = (buffer) => {
+  const bytes = new Uint8Array(buffer);
+  db = new sqlite3.oo1.DB(bytes);
+};
+
 
   const runQuery = (sql, params = []) => {
     const results = [];
