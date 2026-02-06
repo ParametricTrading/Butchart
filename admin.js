@@ -49,15 +49,7 @@
       throw new Error('Load or create a database first.');
     }
   };
-  console.log({
-  dbFileInput,
-  newDbButton,
-  Button,
-  recipeForm,
-  ingredientForm,
-  linkIngredientForm,
-  linkSubrecipeForm
-});
+
   /* =======================
      SQLite lifecycle
      ======================= */
