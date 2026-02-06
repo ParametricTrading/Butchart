@@ -1,4 +1,8 @@
 (() => {
+  /* =======================
+     DOM references
+     ======================= */
+
   const statusEl = document.getElementById('admin-status');
   const dbFileInput = document.getElementById('db-file');
   const newDbButton = document.getElementById('new-db');
@@ -22,37 +26,47 @@
   const childRecipeSelect = document.getElementById('child-recipe');
   const recipeComponentList = document.getElementById('recipe-component-list');
 
+  /* =======================
+     SQLite state
+     ======================= */
+
   let sqlite3;
   let db;
+
+  /* =======================
+     Helpers
+     ======================= */
 
   const setStatus = (message, tone = 'info') => {
     statusEl.textContent = message;
     statusEl.dataset.tone = tone;
   };
 
-  const initSqlite = async () => {
-    if (!window.sqlite3InitModule) {
-      throw new Error('sqlite3InitModule is not available. Add sqlite3.js and sqlite3.wasm.');
+  const ensureDatabaseReady = () => {
+    if (!db) {
+      throw new Error('Load or create a database first.');
     }
-    sqlite3 = await window.sqlite3InitModule({
-      print: console.log,
-      printErr: console.error,
-    });
+  };
+
+  /* =======================
+     SQLite lifecycle
+     ======================= */
+
+  const initSqlite = async () => {
+    if (typeof window.sqlite3InitModule !== 'function') {
+      throw new Error('sqlite3.js not loaded or sqlite3InitModule missing.');
+    }
+    sqlite3 = await window.sqlite3InitModule();
   };
 
   const openDatabase = (buffer) => {
-    const bytes = new Uint8Array(buffer);
-    db = new sqlite3.oo1.DB();
-    if (typeof db.deserialize === 'function') {
-      db.deserialize(bytes);
-    } else {
-      throw new Error('SQLite WASM does not support deserialize().');
-    }
+    db = new sqlite3.oo1.DB(new Uint8Array(buffer));
     exportButton.disabled = false;
   };
 
   const createEmptyDatabase = () => {
     db = new sqlite3.oo1.DB();
+
     db.exec(`
       CREATE TABLE recipes (
         id INTEGER PRIMARY KEY,
@@ -77,88 +91,128 @@
         CHECK (parent_recipe_id != child_recipe_id)
       );
     `);
+
     exportButton.disabled = false;
   };
 
+  const exportDatabase = () => {
+    ensureDatabaseReady();
+
+    const bytes = db.export();
+    const blob = new Blob([bytes], { type: 'application/x-sqlite3' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'recipes.db';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    URL.revokeObjectURL(url);
+  };
+
+  /* =======================
+     Query helpers
+     ======================= */
+
   const runQuery = (sql, params = []) => {
-    const results = [];
+    const rows = [];
     db.exec({
       sql,
       bind: params,
       rowMode: 'object',
-      callback: (row) => results.push(row),
+      callback: (row) => rows.push(row),
     });
-    return results;
+    return rows;
   };
 
+  /* =======================
+     UI refresh
+     ======================= */
+
   const refreshLists = () => {
+    ensureDatabaseReady();
+
     const recipes = runQuery('SELECT id, name FROM recipes ORDER BY name;');
     const ingredients = runQuery('SELECT id, name FROM ingredients ORDER BY name;');
-    const recipeIngredients = runQuery(
-      `SELECT r.name AS recipe, i.name AS ingredient
-       FROM recipe_ingredients ri
-       JOIN recipes r ON r.id = ri.recipe_id
-       JOIN ingredients i ON i.id = ri.ingredient_id
-       ORDER BY r.name, i.name;`
-    );
-    const recipeComponents = runQuery(
-      `SELECT p.name AS parent, c.name AS child
-       FROM recipe_components rc
-       JOIN recipes p ON p.id = rc.parent_recipe_id
-       JOIN recipes c ON c.id = rc.child_recipe_id
-       ORDER BY p.name, c.name;`
-    );
+
+    const recipeIngredients = runQuery(`
+      SELECT r.name AS recipe, i.name AS ingredient
+      FROM recipe_ingredients ri
+      JOIN recipes r ON r.id = ri.recipe_id
+      JOIN ingredients i ON i.id = ri.ingredient_id
+      ORDER BY r.name, i.name;
+    `);
+
+    const recipeComponents = runQuery(`
+      SELECT p.name AS parent, c.name AS child
+      FROM recipe_components rc
+      JOIN recipes p ON p.id = rc.parent_recipe_id
+      JOIN recipes c ON c.id = rc.child_recipe_id
+      ORDER BY p.name, c.name;
+    `);
 
     recipeList.innerHTML = recipes.length
-      ? recipes.map((row) => `<li>${row.name}</li>`).join('')
+      ? recipes.map(r => `<li>${r.name}</li>`).join('')
       : '<li class="muted">No recipes yet.</li>';
 
     ingredientList.innerHTML = ingredients.length
-      ? ingredients.map((row) => `<li>${row.name}</li>`).join('')
+      ? ingredients.map(i => `<li>${i.name}</li>`).join('')
       : '<li class="muted">No ingredients yet.</li>';
 
     recipeIngredientList.innerHTML = recipeIngredients.length
-      ? recipeIngredients.map((row) => `<li>${row.recipe} → ${row.ingredient}</li>`).join('')
+      ? recipeIngredients.map(r => `<li>${r.recipe} → ${r.ingredient}</li>`).join('')
       : '<li class="muted">No links yet.</li>';
 
     recipeComponentList.innerHTML = recipeComponents.length
-      ? recipeComponents.map((row) => `<li>${row.parent} → ${row.child}</li>`).join('')
+      ? recipeComponents.map(r => `<li>${r.parent} → ${r.child}</li>`).join('')
       : '<li class="muted">No sub-recipes yet.</li>';
 
-    const buildOptions = (select, items) => {
+    const populateSelect = (select, rows) => {
       select.innerHTML = '';
-      if (!items.length) {
-        const option = document.createElement('option');
-        option.value = '';
-        option.textContent = 'No options';
-        select.appendChild(option);
+      if (!rows.length) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'No options';
+        select.appendChild(opt);
         return;
       }
-      items.forEach((item) => {
-        const option = document.createElement('option');
-        option.value = item.id;
-        option.textContent = item.name;
-        select.appendChild(option);
+      rows.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r.id;
+        opt.textContent = r.name;
+        select.appendChild(opt);
       });
     };
 
-    buildOptions(linkRecipeSelect, recipes);
-    buildOptions(parentRecipeSelect, recipes);
-    buildOptions(childRecipeSelect, recipes);
-    buildOptions(linkIngredientSelect, ingredients);
+    populateSelect(linkRecipeSelect, recipes);
+    populateSelect(parentRecipeSelect, recipes);
+    populateSelect(childRecipeSelect, recipes);
+    populateSelect(linkIngredientSelect, ingredients);
   };
 
-  const ensureDatabaseReady = () => {
-    if (!db) {
-      throw new Error('Load or create a database first.');
-    }
+  /* =======================
+     Event handlers
+     ======================= */
+
+  const handleFileLoad = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const buffer = await file.arrayBuffer();
+    openDatabase(buffer);
+    refreshLists();
+    setStatus('Database loaded.', 'success');
   };
 
   const handleAddRecipe = (event) => {
     event.preventDefault();
     ensureDatabaseReady();
+
     const name = recipeNameInput.value.trim();
     if (!name) return;
+
     db.exec('INSERT INTO recipes (name) VALUES (?);', [name]);
     recipeNameInput.value = '';
     refreshLists();
@@ -168,8 +222,10 @@
   const handleAddIngredient = (event) => {
     event.preventDefault();
     ensureDatabaseReady();
+
     const name = ingredientNameInput.value.trim();
     if (!name) return;
+
     db.exec('INSERT INTO ingredients (name) VALUES (?);', [name]);
     ingredientNameInput.value = '';
     refreshLists();
@@ -179,13 +235,16 @@
   const handleLinkIngredient = (event) => {
     event.preventDefault();
     ensureDatabaseReady();
+
     const recipeId = linkRecipeSelect.value;
     const ingredientId = linkIngredientSelect.value;
     if (!recipeId || !ingredientId) return;
-    db.exec('INSERT OR IGNORE INTO recipe_ingredients (recipe_id, ingredient_id) VALUES (?, ?);', [
-      recipeId,
-      ingredientId,
-    ]);
+
+    db.exec(
+      'INSERT OR IGNORE INTO recipe_ingredients (recipe_id, ingredient_id) VALUES (?, ?);',
+      [recipeId, ingredientId]
+    );
+
     refreshLists();
     setStatus('Linked ingredient to recipe.', 'success');
   };
@@ -193,55 +252,37 @@
   const handleLinkSubrecipe = (event) => {
     event.preventDefault();
     ensureDatabaseReady();
+
     const parentId = parentRecipeSelect.value;
     const childId = childRecipeSelect.value;
+
     if (!parentId || !childId) return;
     if (parentId === childId) {
       setStatus('A recipe cannot be its own sub-recipe.', 'error');
       return;
     }
-    db.exec('INSERT OR IGNORE INTO recipe_components (parent_recipe_id, child_recipe_id) VALUES (?, ?);', [
-      parentId,
-      childId,
-    ]);
+
+    db.exec(
+      'INSERT OR IGNORE INTO recipe_components (parent_recipe_id, child_recipe_id) VALUES (?, ?);',
+      [parentId, childId]
+    );
+
     refreshLists();
     setStatus('Linked sub-recipe.', 'success');
   };
 
-  const exportDatabase = () => {
-    ensureDatabaseReady();
-    if (typeof db.exportBinary !== 'function') {
-      throw new Error('SQLite WASM does not support exportBinary().');
-    }
-    const bytes = db.exportBinary();
-    const blob = new Blob([bytes], { type: 'application/x-sqlite3' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'recipes.db';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleFileLoad = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    const buffer = await file.arrayBuffer();
-    openDatabase(buffer);
-    refreshLists();
-    setStatus('Database loaded.', 'success');
-  };
+  /* =======================
+     Bootstrap
+     ======================= */
 
   const init = async () => {
     try {
       setStatus('Initializing SQLite…');
       await initSqlite();
-      setStatus('Load a database to begin.', 'info');
-    } catch (error) {
-      console.error(error);
-      setStatus(error.message, 'error');
+      setStatus('Load or create a database to begin.', 'info');
+    } catch (err) {
+      console.error(err);
+      setStatus(err.message, 'error');
     }
   };
 
@@ -251,18 +292,19 @@
       createEmptyDatabase();
       refreshLists();
       setStatus('Created new database.', 'success');
-    } catch (error) {
-      setStatus(error.message, 'error');
+    } catch (err) {
+      setStatus(err.message, 'error');
     }
   });
   exportButton.addEventListener('click', () => {
     try {
       exportDatabase();
       setStatus('Exported recipes.db.', 'success');
-    } catch (error) {
-      setStatus(error.message, 'error');
+    } catch (err) {
+      setStatus(err.message, 'error');
     }
   });
+
   recipeForm.addEventListener('submit', handleAddRecipe);
   ingredientForm.addEventListener('submit', handleAddIngredient);
   linkIngredientForm.addEventListener('submit', handleLinkIngredient);
