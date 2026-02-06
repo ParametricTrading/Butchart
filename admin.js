@@ -1,14 +1,5 @@
 (() => {
-  
-  console.log({
-  dbFileInput,
-  newDbButton,
-  exportButton,
-  recipeForm,
-  ingredientForm,
-  linkIngredientForm,
-  linkSubrecipeForm
-});
+
 
   /* =======================
      DOM references
@@ -58,7 +49,15 @@
       throw new Error('Load or create a database first.');
     }
   };
-
+  console.log({
+  dbFileInput,
+  newDbButton,
+  exportButton,
+  recipeForm,
+  ingredientForm,
+  linkIngredientForm,
+  linkSubrecipeForm
+});
   /* =======================
      SQLite lifecycle
      ======================= */
