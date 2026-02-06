@@ -1,4 +1,4 @@
-console.log("ADMIN.JS VERSION", "DB-FIX");
+console.log("ADMIN.JS VERSION", "binding");
 (() => {
 
 
