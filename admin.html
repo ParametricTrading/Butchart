@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Recipe Admin</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Recipe Admin</h1>
+      <p class="subtitle">Load, edit, and export the recipes database.</p>
+    </header>
+
+    <main>
+      <section class="panel">
+        <h2>Database</h2>
+        <div class="row wrap">
+          <label class="file">
+            <span>Load recipes.db</span>
+            <input id="db-file" type="file" accept=".db" />
+          </label>
+          <button id="new-db" type="button">Create New Database</button>
+          <button id="export-db" type="button" disabled>Export recipes.db</button>
+        </div>
+        <p id="admin-status" class="status">Waiting for database.</p>
+      </section>
+
+      <section class="panel grid">
+        <div>
+          <h2>Recipes</h2>
+          <form id="recipe-form" class="stack">
+            <label>
+              Recipe name
+              <input id="recipe-name" type="text" required />
+            </label>
+            <button type="submit">Add Recipe</button>
+          </form>
+          <ul id="recipe-list" class="list"></ul>
+        </div>
+
+        <div>
+          <h2>Ingredients</h2>
+          <form id="ingredient-form" class="stack">
+            <label>
+              Ingredient name
+              <input id="ingredient-name" type="text" required />
+            </label>
+            <button type="submit">Add Ingredient</button>
+          </form>
+          <ul id="ingredient-list" class="list"></ul>
+        </div>
+      </section>
+
+      <section class="panel grid">
+        <div>
+          <h2>Link Ingredient to Recipe</h2>
+          <form id="link-ingredient-form" class="stack">
+            <label>
+              Recipe
+              <select id="link-recipe"></select>
+            </label>
+            <label>
+              Ingredient
+              <select id="link-ingredient"></select>
+            </label>
+            <button type="submit">Link Ingredient</button>
+          </form>
+          <ul id="recipe-ingredient-list" class="list"></ul>
+        </div>
+
+        <div>
+          <h2>Link Sub-Recipe</h2>
+          <form id="link-subrecipe-form" class="stack">
+            <label>
+              Parent recipe
+              <select id="parent-recipe"></select>
+            </label>
+            <label>
+              Child recipe
+              <select id="child-recipe"></select>
+            </label>
+            <button type="submit">Link Sub-Recipe</button>
+          </form>
+          <ul id="recipe-component-list" class="list"></ul>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Export the database and commit it to GitHub to publish updates.</p>
+    </footer>
+
+    <script src="sqlite-wasm.js"></script>
+    <script src="admin.js"></script>
+  </body>
+</html>

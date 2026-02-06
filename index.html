@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Butchart Recipes</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Recipe Search</h1>
+      <p class="subtitle">Search by ingredient. Recipes include ingredients from sub-recipes.</p>
+    </header>
+
+    <main>
+      <section class="panel">
+        <label for="ingredient-search">Ingredient</label>
+        <div class="row">
+          <input id="ingredient-search" type="search" placeholder="e.g., sugar" autocomplete="off" />
+          <button id="search-button" type="button">Search</button>
+        </div>
+        <p id="status" class="status">Loading database…</p>
+      </section>
+
+      <section class="panel">
+        <h2>Matching Recipes</h2>
+        <ul id="results" class="list"></ul>
+      </section>
+
+      <section class="panel">
+        <h2>Recipe Details</h2>
+        <div id="recipe-details" class="details">
+          <p class="muted">Select a recipe to view ingredients and sub-recipes.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Offline-ready after the first successful load.</p>
+    </footer>
+
+    <script src="sqlite-wasm.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
