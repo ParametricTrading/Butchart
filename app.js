@@ -1,6 +1,3 @@
-import sqlite3InitModule from "./sqlite3.js";
-
-
 (() => {
   const statusEl = document.getElementById('status');
   const searchInput = document.getElementById('ingredient-search');
@@ -20,6 +17,10 @@ import sqlite3InitModule from "./sqlite3.js";
     statusEl.dataset.tone = tone;
   };
 
+  /* =======================
+     IndexedDB cache helpers
+     ======================= */
+
   const openCache = () =>
     new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_CACHE_KEY, 1);
@@ -31,56 +32,67 @@ import sqlite3InitModule from "./sqlite3.js";
     });
 
   const readCache = async () => {
-    const db = await openCache();
+    const idb = await openCache();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(DB_CACHE_STORE, 'readonly');
+      const tx = idb.transaction(DB_CACHE_STORE, 'readonly');
       const store = tx.objectStore(DB_CACHE_STORE);
-      const request = store.get(DB_PATH);
-      request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => reject(request.error);
+      const req = store.get(DB_PATH);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
     });
   };
 
   const writeCache = async (buffer) => {
-    const db = await openCache();
+    const idb = await openCache();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(DB_CACHE_STORE, 'readwrite');
-      const store = tx.objectStore(DB_CACHE_STORE);
-      store.put(buffer, DB_PATH);
+      const tx = idb.transaction(DB_CACHE_STORE, 'readwrite');
+      tx.objectStore(DB_CACHE_STORE).put(buffer, DB_PATH);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
   };
 
-  const fetchDatabase = async () => {
-    const response = await fetch(DB_PATH, { cache: 'no-store' });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch ${DB_PATH}: ${response.status}`);
-    }
-    return response.arrayBuffer();
-  };
+  /* =======================
+     SQLite initialization
+     ======================= */
 
   const initSqlite = async () => {
-  sqlite3 = await sqlite3InitModule();
+    if (typeof window.sqlite3InitModule !== 'function') {
+      throw new Error('sqlite3.js not loaded or sqlite3InitModule missing.');
+    }
+    sqlite3 = await window.sqlite3InitModule();
   };
 
+  const openDatabase = (buffer) => {
+    db = new sqlite3.oo1.DB(new Uint8Array(buffer));
+  };
 
-const openDatabase = (buffer) => {
-  const bytes = new Uint8Array(buffer);
-  db = new sqlite3.oo1.DB(bytes);
-};
+  /* =======================
+     DB helpers
+     ======================= */
 
+  const fetchDatabase = async () => {
+    const res = await fetch(DB_PATH, { cache: 'no-store' });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch ${DB_PATH} (${res.status})`);
+    }
+    return res.arrayBuffer();
+  };
 
   const runQuery = (sql, params = []) => {
-    const results = [];
+    const rows = [];
     db.exec({
       sql,
       bind: params,
       rowMode: 'object',
-      callback: (row) => results.push(row),
+      callback: (row) => rows.push(row),
     });
-    return results;
+    return rows;
   };
+
+  /* =======================
+     UI rendering
+     ======================= */
 
   const renderRecipes = (rows) => {
     resultsList.innerHTML = '';
@@ -88,26 +100,32 @@ const openDatabase = (buffer) => {
       resultsList.innerHTML = '<li class="muted">No matching recipes.</li>';
       return;
     }
+
     rows.forEach((row) => {
       const li = document.createElement('li');
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.textContent = row.name;
-      button.addEventListener('click', () => showRecipe(row.id));
-      li.appendChild(button);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = row.name;
+      btn.onclick = () => showRecipe(row.id);
+      li.appendChild(btn);
       resultsList.appendChild(li);
     });
   };
 
   const showRecipe = (recipeId) => {
-    const recipe = runQuery('SELECT name FROM recipes WHERE id = ?;', [recipeId])[0];
+    const recipe = runQuery(
+      'SELECT name FROM recipes WHERE id = ?;',
+      [recipeId]
+    )[0];
+
     if (!recipe) {
       detailsEl.innerHTML = '<p class="muted">Recipe not found.</p>';
       return;
     }
 
     const ingredients = runQuery(
-      `WITH RECURSIVE subtree(id) AS (
+      `
+      WITH RECURSIVE subtree(id) AS (
         SELECT id FROM recipes WHERE id = ?
         UNION ALL
         SELECT rc.child_recipe_id
@@ -118,58 +136,42 @@ const openDatabase = (buffer) => {
       FROM subtree s
       JOIN recipe_ingredients ri ON ri.recipe_id = s.id
       JOIN ingredients i ON i.id = ri.ingredient_id
-      ORDER BY i.name;`,
+      ORDER BY i.name;
+      `,
       [recipeId]
     );
 
     const subRecipes = runQuery(
-      `SELECT r.id, r.name
-       FROM recipe_components rc
-       JOIN recipes r ON r.id = rc.child_recipe_id
-       WHERE rc.parent_recipe_id = ?
-       ORDER BY r.name;`,
+      `
+      SELECT r.id, r.name
+      FROM recipe_components rc
+      JOIN recipes r ON r.id = rc.child_recipe_id
+      WHERE rc.parent_recipe_id = ?
+      ORDER BY r.name;
+      `,
       [recipeId]
     );
 
-    detailsEl.innerHTML = '';
-    const title = document.createElement('h3');
-    title.textContent = recipe.name;
-    detailsEl.appendChild(title);
-
-    const ingredientsTitle = document.createElement('h4');
-    ingredientsTitle.textContent = 'Ingredients (including sub-recipes)';
-    detailsEl.appendChild(ingredientsTitle);
-
-    const ingredientList = document.createElement('ul');
-    ingredientList.className = 'list';
-    if (ingredients.length) {
-      ingredients.forEach((row) => {
-        const li = document.createElement('li');
-        li.textContent = row.name;
-        ingredientList.appendChild(li);
-      });
-    } else {
-      ingredientList.innerHTML = '<li class="muted">No ingredients found.</li>';
-    }
-    detailsEl.appendChild(ingredientList);
-
-    const subTitle = document.createElement('h4');
-    subTitle.textContent = 'Direct sub-recipes';
-    detailsEl.appendChild(subTitle);
-
-    const subList = document.createElement('ul');
-    subList.className = 'list';
-    if (subRecipes.length) {
-      subRecipes.forEach((row) => {
-        const li = document.createElement('li');
-        li.textContent = row.name;
-        subList.appendChild(li);
-      });
-    } else {
-      subList.innerHTML = '<li class="muted">None.</li>';
-    }
-    detailsEl.appendChild(subList);
+    detailsEl.innerHTML = `
+      <h3>${recipe.name}</h3>
+      <h4>Ingredients (including sub-recipes)</h4>
+      <ul class="list">
+        ${ingredients.length
+          ? ingredients.map(i => `<li>${i.name}</li>`).join('')
+          : '<li class="muted">No ingredients found.</li>'}
+      </ul>
+      <h4>Direct sub-recipes</h4>
+      <ul class="list">
+        ${subRecipes.length
+          ? subRecipes.map(r => `<li>${r.name}</li>`).join('')
+          : '<li class="muted">None.</li>'}
+      </ul>
+    `;
   };
+
+  /* =======================
+     Search
+     ======================= */
 
   const search = () => {
     const term = searchInput.value.trim().toLowerCase();
@@ -179,7 +181,8 @@ const openDatabase = (buffer) => {
     }
 
     const rows = runQuery(
-      `WITH RECURSIVE matching(id) AS (
+      `
+      WITH RECURSIVE matching(id) AS (
         SELECT r.id
         FROM recipes r
         JOIN recipe_ingredients ri ON r.id = ri.recipe_id
@@ -193,65 +196,50 @@ const openDatabase = (buffer) => {
       SELECT DISTINCT r.id, r.name
       FROM matching m
       JOIN recipes r ON r.id = m.id
-      ORDER BY r.name;`,
+      ORDER BY r.name;
+      `,
       [`%${term}%`]
     );
 
     renderRecipes(rows);
-    if (rows.length) {
-      setStatus(`Found ${rows.length} recipe${rows.length === 1 ? '' : 's'}.`, 'success');
-    } else {
-      setStatus('No recipes matched that ingredient.', 'warning');
-    }
+    setStatus(
+      rows.length
+        ? `Found ${rows.length} recipe${rows.length === 1 ? '' : 's'}.`
+        : 'No recipes matched that ingredient.',
+      rows.length ? 'success' : 'warning'
+    );
   };
 
   const attachEvents = () => {
-    searchButton.addEventListener('click', search);
-    searchInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        search();
-      }
-    });
+    searchButton.onclick = search;
+    searchInput.onkeydown = (e) => {
+      if (e.key === 'Enter') search();
+    };
   };
+
+  /* =======================
+     App bootstrap
+     ======================= */
 
   const loadApp = async () => {
     try {
       setStatus('Initializing SQLite…');
       await initSqlite();
 
-      let buffer = null;
-      try {
-        buffer = await readCache();
-      } catch (error) {
-        console.warn('Cache read failed:', error);
-      }
+      let buffer = await readCache();
 
       if (!buffer) {
         setStatus('Downloading database…');
         buffer = await fetchDatabase();
         await writeCache(buffer);
-      } else {
-        setStatus('Loaded cached database. Checking for updates…');
-        fetchDatabase()
-          .then((fresh) => {
-            if (fresh.byteLength !== buffer.byteLength) {
-              writeCache(fresh);
-              buffer = fresh;
-              openDatabase(buffer);
-              setStatus('Database updated.', 'success');
-            }
-          })
-          .catch((error) => {
-            console.warn('Update check failed:', error);
-          });
       }
 
       openDatabase(buffer);
-      setStatus('Ready to search.', 'success');
       attachEvents();
-    } catch (error) {
-      console.error(error);
-      setStatus(error.message, 'error');
+      setStatus('Ready to search.', 'success');
+    } catch (err) {
+      console.error(err);
+      setStatus(err.message, 'error');
     }
   };
 
