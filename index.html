@@ -5,8 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Butchart Recipes</title>
     <link rel="stylesheet" href="styles.css" />
-    <script src="sqlite3.js"></script>
-    <script src="app.js"></script>
+<script type="module">
+  import sqlite3InitModule from "./sqlite3.js";
+
+  const sqlite3 = await sqlite3InitModule();
+  window.sqlite3 = sqlite3; // expose globally if needed
+</script>
+
+<script type="module" src="app.js"></script>
+
   </head>
   <body>
     <header>
