@@ -1,3 +1,4 @@
+console.count("admin.js executed");
 (() => {
 
 
