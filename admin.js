@@ -1,4 +1,4 @@
-console.log("ADMIN.JS VERSION", "binding2");
+console.log("ADMIN.JS VERSION", "export");
 (() => {
 
 
@@ -64,7 +64,7 @@ console.log("ADMIN.JS VERSION", "binding2");
 
   const openDatabase = (buffer) => {
     db = new sqlite3.oo1.DB(new Uint8Array(buffer));
-    exportButton.disabled = false;
+    Button.disabled = false;
   };
 
   const createEmptyDatabase = () => {
@@ -95,39 +95,56 @@ console.log("ADMIN.JS VERSION", "binding2");
       );
     `);
 
-    exportButton.disabled = false;
+    Button.disabled = false;
   };
 
 const exportDatabase = () => {
   ensureDatabaseReady();
 
   const capi = sqlite3.capi;
+  const wasm = sqlite3.wasm;
   const dbPtr = db.pointer;
 
-  const serialized = capi.sqlite3_serialize(
+  // Allocate space for size_t
+  const sizePtr = wasm.alloc(8);
+
+  // Serialize DB
+  const dataPtr = capi.sqlite3_serialize(
     dbPtr,
     'main',
-    0,   // allocate
-    0    // size out
+    sizePtr,
+    0
   );
 
-  if (!serialized) {
+  if (!dataPtr) {
+    wasm.dealloc(sizePtr);
     throw new Error('Failed to serialize database.');
   }
 
-  const bytes = new Uint8Array(serialized);
+  // Read size
+  const size = wasm.peek(sizePtr, 'i64');
+
+  // Copy bytes from WASM heap
+  const bytes = wasm.heap8().slice(dataPtr, dataPtr + size);
+
+  // Free SQLite memory
+  capi.sqlite3_free(dataPtr);
+  wasm.dealloc(sizePtr);
+
+  // Download
   const blob = new Blob([bytes], { type: 'application/x-sqlite3' });
   const url = URL.createObjectURL(blob);
 
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = 'recipes.db';
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'recipes.db';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 
   URL.revokeObjectURL(url);
 };
+
 
 
   /* =======================
