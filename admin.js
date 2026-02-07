@@ -1,4 +1,4 @@
-console.log("ADMIN.JS VERSION", "exportbutton");
+console.log("ADMIN.JS VERSION", "bignumber");
 (() => {
 
 
@@ -105,10 +105,8 @@ const exportDatabase = () => {
   const wasm = sqlite3.wasm;
   const dbPtr = db.pointer;
 
-  // Allocate space for size_t
   const sizePtr = wasm.alloc(8);
 
-  // Serialize DB
   const dataPtr = capi.sqlite3_serialize(
     dbPtr,
     'main',
@@ -121,17 +119,16 @@ const exportDatabase = () => {
     throw new Error('Failed to serialize database.');
   }
 
-  // Read size
-  const size = wasm.peek(sizePtr, 'i64');
+  const size = Number(wasm.peek(sizePtr, 'i64'));
 
-  // Copy bytes from WASM heap
-  const bytes = wasm.heap8().slice(dataPtr, dataPtr + size);
+  const bytes = wasm.heap8().slice(
+    dataPtr,
+    dataPtr + size
+  );
 
-  // Free SQLite memory
   capi.sqlite3_free(dataPtr);
   wasm.dealloc(sizePtr);
 
-  // Download
   const blob = new Blob([bytes], { type: 'application/x-sqlite3' });
   const url = URL.createObjectURL(blob);
 
@@ -144,6 +141,7 @@ const exportDatabase = () => {
 
   URL.revokeObjectURL(url);
 };
+
 
 
 
