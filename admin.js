@@ -1,4 +1,4 @@
-console.log("ADMIN.JS VERSION", "export");
+console.log("ADMIN.JS VERSION", "exportbutton");
 (() => {
 
 
@@ -64,7 +64,7 @@ console.log("ADMIN.JS VERSION", "export");
 
   const openDatabase = (buffer) => {
     db = new sqlite3.oo1.DB(new Uint8Array(buffer));
-    Button.disabled = false;
+    exportButton.disabled = false;
   };
 
   const createEmptyDatabase = () => {
@@ -95,7 +95,7 @@ console.log("ADMIN.JS VERSION", "export");
       );
     `);
 
-    Button.disabled = false;
+    exportButton.disabled = false;
   };
 
 const exportDatabase = () => {
